@@ -98,7 +98,7 @@ public class Client extends JFrame implements DataListener, GameConstants, Actio
         enabled(false);
         for(byte r = 0; r < ROWS; r++){
             for(byte c = 0; c < COLUMNS; c++){
-                enabled[r][c] = false;
+                enabled[r][c] = true;
                 resetButtonText(r, c);
             }
         }
@@ -117,7 +117,7 @@ public class Client extends JFrame implements DataListener, GameConstants, Actio
     private void turn(){
         for(byte r = 0; r < ROWS; r++)
             for(byte c = 0; c < COLUMNS; c++)
-                enabled(r, c, enabled[r][c]);
+                enabled(r, c, charAt(r, c) == ' ' && enabled[r][c]);
     }
 
     private void enabled(final byte r, final byte c, final boolean enabled){
@@ -130,10 +130,10 @@ public class Client extends JFrame implements DataListener, GameConstants, Actio
     }
 
     private void set(final byte r, final byte c, final byte letter){
+        enabled[r][c] = false;
         SwingUtilities.invokeLater(
                 () -> {
                     buttons[r][c].setEnabled(false);
-                    enabled[r][c] = false;
                     buttons[r][c].setText(Character.toString((char)letter));
                     buttons[r][c].repaint();
                 }
@@ -164,6 +164,15 @@ public class Client extends JFrame implements DataListener, GameConstants, Actio
                 );
             }
         }else{
+            if(full()){
+                append("No more moves left");
+                try{
+                    connection.send(new GameData(TIE));
+                }catch(IOException ex){
+                    ex.printStackTrace();
+                }
+                return;
+            }
             outer:
             for(byte r = 0; r < ROWS; r++){
                 for(byte c = 0; c < COLUMNS; c++){
@@ -172,9 +181,9 @@ public class Client extends JFrame implements DataListener, GameConstants, Actio
                     try{
                         connection.send(new GameData(r, c, MOVE, letter));
                         set(r, c, letter);
-                        enabled(false);
                         if(win())
                             connection.send(new GameData(r, c, WIN, letter));
+                        enabled(false);
                     }catch(IOException ex){
                         ex.printStackTrace();
                     }
@@ -182,6 +191,14 @@ public class Client extends JFrame implements DataListener, GameConstants, Actio
                 }
             }
         }
+    }
+
+    private boolean full(){
+        for(byte r = 0; r < ROWS; r++)
+            for(byte c = 0; c < COLUMNS; c++)
+                if(enabled[r][c])
+                    return false;
+        return true;
     }
 
     public void start(){
@@ -212,7 +229,8 @@ public class Client extends JFrame implements DataListener, GameConstants, Actio
     }
 
     private char charAt(final byte r, final byte c){
-        return buttons[r][c].getText().charAt(0);
+        final String text = buttons[r][c].getText();
+        return text.isEmpty() ? ' ' : text.charAt(0);
     }
 
     private boolean checkVertical(final char letter){
@@ -253,9 +271,8 @@ public class Client extends JFrame implements DataListener, GameConstants, Actio
         final Data data = e.data();
         if(data instanceof GameData){
             final GameData gd = (GameData)data;
-            set(gd);
             if(gd.id() == MOVE)
-                turn();
+                set(gd);
         }else if(data instanceof Message){
             final Message msg = (Message)data;
             append(msg.message());
@@ -264,12 +281,24 @@ public class Client extends JFrame implements DataListener, GameConstants, Actio
                 final int id = smsg.id();
                 if(id == ASSIGN)
                     letter = smsg.data();
-                else if(id == WIN || id == LOSE || id == TIE || id == DISCONNECT)
+                else if(id == WIN || id == LOSE || id == TIE || id == DISCONNECT){
                     reset();
-                else if(id == DO_TURN)
+                    enableChat(false);
+                }else if(id == DO_TURN)
                     turn();
+                else if(id == MATCH)
+                    enableChat(true);
             }
         }
+    }
+
+    private void enableChat(final boolean enabled){
+        SwingUtilities.invokeLater(
+                () -> {
+                    chatBox.setEditable(enabled);
+                    chatBox.repaint();
+                }
+        );
     }
 
     public static void main(String args[]){

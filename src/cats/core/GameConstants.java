@@ -12,7 +12,7 @@ public interface GameConstants {
     public static final int PORT = 8974;
 
     public static final byte X = 'X';
-    public static final byte O = 'Y';
+    public static final byte O = 'O';
 
     public static final byte MESSAGE = -1;
 

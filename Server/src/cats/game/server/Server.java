@@ -5,6 +5,7 @@ import cats.core.connection.Connection;
 import cats.core.connection.event.ConnectionEvent;
 import cats.core.connection.event.ConnectionListener;
 import cats.core.data.Data;
+import cats.core.data.GameData;
 import cats.core.data.event.DataEvent;
 import cats.core.data.event.DataListener;
 import cats.core.data.message.ServerMessage;
@@ -80,13 +81,16 @@ public class Server extends JFrame implements ConnectionListener, DataListener, 
                     connection.send(new ServerMessage("Searching for opponent..."));
                     final ConnectionPair pair = needPair();
                     if(pair == null){
-                        final ConnectionPair p = new ConnectionPair(connection, null);
+                        final ConnectionPair p = new ConnectionPair();
                         p.assign(connection, X);
                         pairs.add(p);
-                        connection.send(new ServerMessage("You have been assigned the letter X", ASSIGN, X));
+                        connection.send(new ServerMessage(String.format("You have been assigned the letter %s", (char)X), ASSIGN, X));
                     }else{
                         final Connection waiting = pair.waiting();
-                        pair.assign(connection, pair.otherLetter(waiting));
+                        final byte letter = pair.otherLetter(waiting);
+                        pair.assign(connection, letter);
+                        connection.send(new ServerMessage(String.format("You have been assigned the letter %s", (char) letter), ASSIGN, letter));
+                        connection.send(new ServerMessage("Found oppoonent: " + waiting, MATCH));
                         waiting.send(new ServerMessage("Found opponent: " + connection, MATCH));
                         waiting.send(new ServerMessage("You will get to go first", DO_TURN));
                     }
@@ -140,6 +144,23 @@ public class Server extends JFrame implements ConnectionListener, DataListener, 
         final Connection other = pair.other(c);
         try{
             other.send(d);
+            if(d instanceof GameData){
+                final GameData gd = (GameData)d;
+                switch(gd.id()){
+                    case WIN:
+                        other.send(new ServerMessage("Other player has won", LOSE));
+                        break;
+                    case MOVE:
+                        other.send(new ServerMessage("It is your turn", DO_TURN));
+                        break;
+                    case TIE:
+                        other.send(new ServerMessage("Tie!", TIE));
+                        break;
+                    default:
+                        other.send(gd);
+                        break;
+                }
+            }
         }catch(IOException ex){
             ex.printStackTrace();
         }

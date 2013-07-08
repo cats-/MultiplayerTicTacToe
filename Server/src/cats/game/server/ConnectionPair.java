@@ -16,10 +16,9 @@ public class ConnectionPair implements GameConstants{
     private Connection second;
     private byte secondLetter;
 
-    public ConnectionPair(final Connection first, final Connection second){
-        this.first = first;
-        this.second = second;
-
+    public ConnectionPair(){
+        first = null;
+        second = null;
         firstLetter = secondLetter = 0;
     }
 
@@ -48,12 +47,12 @@ public class ConnectionPair implements GameConstants{
     }
 
     public void assign(final Connection connection, final byte letter){
-        if(first != null){
+        if(first == null){
             first = connection;
-            firstLetter = letter(second) == X ? O : X;
-        }else if(second != null){
+            firstLetter = letter;
+        }else if(second == null){
             second = connection;
-            secondLetter = letter(first) == X ? O : X;
+            secondLetter = letter;
         }
     }
 

@@ -14,6 +14,10 @@ public class GameData extends Data implements Serializable{
         super(row, column, id, data);
     }
 
+    public GameData(final byte id){
+        this((byte)0, (byte)0, id, (byte)0);
+    }
+
     public byte id(){
         return bytes[2];
     }
